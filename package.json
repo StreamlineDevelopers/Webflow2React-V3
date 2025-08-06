@@ -1,0 +1,24 @@
+{
+  "name": "webflow2react-v3",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "camelcase": "^8.0.0",
+    "dom-serializer": "^2.0.0",
+    "flatted": "^3.3.3",
+    "fs-extra": "^11.3.1",
+    "htmlparser2": "^10.0.0",
+    "react": "^19.1.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}
