@@ -91,9 +91,9 @@ project-root/
 │
 ├── scripts/
 │   ├── converter.js
-│   ├── index.js
-│   └── config.json   <-- Your configuration file
-│
+│   └── index.js
+│   
+├── config.json   <-- Your configuration file
 ├── package.json
 └── ...
 ```
