@@ -1,0 +1,51 @@
+{
+    "paths": {
+        "htmlInput": "../html",
+        "asts": "../asts",
+        "reactOutput": "./react_output",
+        "components": "components",
+        "pages": "pages",
+        "public": "public",
+        "svgs": "svgs"
+    },
+    "componentization": {
+        "minChildrenForRepetition": 2,
+        "minRepetitionsForComponent": 2,
+        "layoutIdentifiers": [
+            "navbar",
+            "section-navhero",
+            "footer",
+            "sidebar",
+            "main-content",
+            "container",
+            "section",
+            "topbar"
+        ],
+        "selfClosingTags": [
+            "img",
+            "br",
+            "hr",
+            "input",
+            "meta",
+            "link",
+            "area",
+            "base",
+            "col",
+            "embed",
+            "param",
+            "source",
+            "track",
+            "wbr"
+        ]
+    },
+    "formatting": {
+        "prettier": {
+            "parser": "babel",
+            "tabWidth": 2,
+            "semi": true,
+            "singleQuote": true,
+            "jsxSingleQuote": false,
+            "trailingComma": "es5"
+        }
+    }
+}
