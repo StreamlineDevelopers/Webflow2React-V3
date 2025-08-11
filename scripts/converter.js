@@ -28,10 +28,14 @@ const COMPONENTS_OUTPUT_DIR = path.join(REACT_OUTPUT_DIR, pathConfig.components)
 const PAGES_OUTPUT_DIR = path.join(REACT_OUTPUT_DIR, pathConfig.pages);
 const INPUT_ASTS_DIR = path.join(__dirname, pathConfig.asts);
 
-// --- Global State (Unchanged) ---
-let globalComponentCounter = 0;
+// --- Global State (Modified) ---
+// --- REMOVED: This global counter is the source of instability. ---
+// let globalComponentCounter = 0;
 const globalGeneratedComponentSignatures = new Map();
 const globalGeneratedComponentJSXStrings = new Map();
+// --- NEW: This map tracks which name is used by which fingerprint to detect collisions. ---
+const globalNameUsage = new Map();
+
 
 // =================================================================
 // === UTILITY AND HELPER FUNCTIONS (SORTED FOR CORRECT ORDER)   ===
@@ -382,6 +386,7 @@ function identifyComponents(bodyNode, localComponentRegistry) {
     let finalName,
       componentFilePath,
       isNewGlobalComponent = false;
+
     if (globalGeneratedComponentSignatures.has(fingerprint)) {
       const existingGlobalInfo =
         globalGeneratedComponentSignatures.get(fingerprint);
@@ -391,22 +396,21 @@ function identifyComponents(bodyNode, localComponentRegistry) {
         `Reusing component: ${finalName} (originally from ${candidate.nameAttempt})`
       );
     } else {
-      let tempName = candidate.nameAttempt;
-      if (
-        Array.from(globalGeneratedComponentSignatures.values()).some(
-          (info) => info.name === tempName
-        ) ||
-        globalGeneratedComponentJSXStrings.has(tempName)
-      )
-        tempName = `${candidate.nameAttempt}${globalComponentCounter++}`;
-      while (
-        Array.from(globalGeneratedComponentSignatures.values()).some(
-          (info) => info.name === tempName
-        ) ||
-        globalGeneratedComponentJSXStrings.has(tempName)
-      )
-        tempName = `${candidate.nameAttempt}${globalComponentCounter++}`;
-      finalName = tempName;
+      // --- MODIFIED: Component Naming Logic for Stability ---
+      // This new logic uses the fingerprint to create a stable name, avoiding the unstable counter.
+      const baseName = candidate.nameAttempt;
+      const existingFingerprintForName = globalNameUsage.get(baseName);
+
+      if (!existingFingerprintForName) {
+        // This name is not used yet, we can claim it.
+        finalName = baseName;
+        globalNameUsage.set(baseName, fingerprint);
+      } else {
+        // This name is already used by a different component. Create a unique, deterministic name.
+        const shortHash = fingerprint.substring(0, 8);
+        finalName = `${baseName}_${shortHash}`;
+      }
+
       // The pathConfig constant from the config is used here.
       componentFilePath = path.join(pathConfig.components, `${finalName}.jsx`);
       isNewGlobalComponent = true;
@@ -610,11 +614,10 @@ function astNodeToJsx(
             .digest('hex');
           const svgFilename = `icon-${hash}.svg`;
           const svgDiskPath = path.join(SVGS_OUTPUT_DIR, svgFilename);
-          // Use pathConfig constants for the public path
-          const publicSrcPath = `/${path.join(pathConfig.public, pathConfig.svgs, svgFilename).replace(/\\/g, '/')}`;
+          const publicSrcPath = `/${path.join(pathConfig.svgs, svgFilename).replace(/\\/g, '/')}`;
           fs.writeFile(svgDiskPath, svgString).catch((err) => {
             console.error(
-              `Error sa pagsulat ng SVG file: ${svgDiskPath}`,
+              `Error writing SVG file: ${svgDiskPath}`,
               err
             );
           });
@@ -773,7 +776,7 @@ async function processSingleAst(astFilePath, pageName) {
     let finalPropsSignature = `{ ${propsDestructureString} }`;
     if (!propsDestructureString && !hasChildrenProp) finalPropsSignature = '{}';
     const usedComponentNamesInBody = new Set();
-    const componentNamePattern = /<([A-Z][A-Za-z0-9]*)\b/g;
+    const componentNamePattern = /<([A-Z][A-Za-z0-9_]*)\b/g; // Modified to include underscore
     let match;
     while ((match = componentNamePattern.exec(compDef.jsxBody)) !== null)
       if (match[1] !== compDef.name) usedComponentNamesInBody.add(match[1]);
@@ -811,7 +814,7 @@ async function processSingleAst(astFilePath, pageName) {
     )
     .join('');
   const usedComponentNamesOnPage = new Set();
-  const pageComponentNamePattern = /<([A-Z][A-Za-z0-9]*)\b/g;
+  const pageComponentNamePattern = /<([A-Z][A-Za-z0-9_]*)\b/g; // Modified to include underscore
   let pageMatch;
   while ((pageMatch = pageComponentNamePattern.exec(pageJsxContent)) !== null)
     usedComponentNamesOnPage.add(pageMatch[1]);
@@ -851,7 +854,9 @@ async function processSingleAst(astFilePath, pageName) {
 async function main() {
   // Use global path constants for all directory operations.
   await fs.ensureDir(REACT_OUTPUT_DIR);
-  await fs.emptyDir(REACT_OUTPUT_DIR);
+  // We clear the component/page directories to ensure no stale files remain
+  await fs.emptyDir(COMPONENTS_OUTPUT_DIR);
+  await fs.emptyDir(PAGES_OUTPUT_DIR);
   await fs.ensureDir(SVGS_OUTPUT_DIR);
 
   const astFiles = await fs.readdir(INPUT_ASTS_DIR);
